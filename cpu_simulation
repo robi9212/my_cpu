@@ -1,0 +1,316 @@
+import sys
+
+class rob_cpu():
+    #initializing parameters used by a cpu
+    def __init__(self, name):
+        self.name = name
+        #these list simulate empty registers 
+        #we are storing actual numbeRs in deci from and will use int and bin to transform 
+        self.number_registers = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.history_registers = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        #keeping track of registers use, using FIFO methond.
+        #our 1st index in number registry is always 0 we will start at index 2
+        self.num_index = 1
+        self.history_index = 0
+        self.temp_history_index = 0
+        self.cache_index = 0
+        self.main_memory_index = 0
+        self.prog_counter = 0
+
+        #data that will be returned to user
+        self.user_display = ''
+        self.update_display(f'Hello i am {self.name}!')
+
+        #location tells us location and data calue is temporarily stored in cache
+        self.cache = [
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None},
+            {'location': None, 'data': None}
+        ]
+
+    #simulating main_memory, there will be 1024 locations.
+        self.main_memory = [{x : x} for x in range(1024)]
+
+    #changing output.
+    def update_display(self, to_update):
+        self.user_display = to_update
+        print(self.user_display)
+
+    #storing values to a register in cache
+    def store_value_to_register(self, value_to_store, location = None):
+        #if all registers are full, start overwriting oldest registers.
+        if location and location <= 21:
+            self.number_registers[location] = int(value_to_store, 2)
+        else:
+            if self.num_index > 21:
+                self.num_index = 1
+                #converting binary value to interger and store in number register
+            self.number_registers[self.num_index] = int(value_to_store, 2)
+            print(f'Value: {int(value_to_store, 2)} was stored in register: {self.num_index}')
+            self.num_index +=1
+
+    #loading values to registers
+    def load_value_from_register(self, register_address):
+        #converting register address binary to int
+        index = int(register_address, 2)
+        print(self.number_registers)
+        #retreiving the number at the specified address
+        int_value = int(self.number_registers[index])
+        return int_value
+    
+    #storing to history_register
+    def store_to_history_register(self, result_to_store):
+        #if all history registers are full, overwrite oldest registers
+        if self.history_index > 9:
+            self.history_index = 0
+        #convert results to binary and store in history_index
+        self.history_registers[self.history_index] = bin(result_to_store)
+        self.history_index += 1
+        #ensuring that after each calculation history starts ar right location
+        self.temp_history_index = self.history_index
+        
+
+    #storing to main memeory
+    def store_main_memory(self, value_to_store, location_to_store = None):
+        if location_to_store:
+            self.main_memory[location_to_store][location_to_store] = value_to_store
+            self.update_display(f'storing value {value_to_store} in main memory location {location_to_store}\n')
+        else:
+            self.main_memory[self.main_memory_index][self.main_memory_index] = value_to_store
+            self.main_memory_index += 1
+            self.update_display(f'storing value: {value_to_store} in main memory location {self.main_memory_index - 1}\n')
+        return
+    
+    #retrieving from main memory
+    def retrieve_main_memory(self, location):
+        value = self.main_memory[location][location]
+        return value
+    
+    #resetting main_memory
+    def reset_main_memory_location(self, location):
+        self.main_memory[location][location] = location
+        return 
+    
+    #storing to cache
+    def store_to_cache(self, location, value):
+        if self.cache_index > 9:
+            self.cache_index = 0
+        self.cahce[self.cache_index]['location'] = location
+        self.cache[self.cache_index]['data'] = value
+        self.cache_index += 1 
+        return
+    
+    #is location in cache
+    def in_cahce(self, location):
+        in_ = False
+        position = 0
+        counter = 0
+        for dict_ in self.cache:
+            if dict_['location'] == location:
+                in_ = True
+            else:
+                counter += 1
+                continue
+        return in_, position
+
+    #checking cache 
+    def check_cahce(self, location):
+        if self.in_cache == True:
+            for dict_ in self.cahce:
+                if dict_['location'] == location:
+                    return dict_['data']
+                else:
+                    continue
+        else:
+            self.store_to_cache(location, self.retrieve_main_memory(location))
+
+    #storing instructions
+    def store_instruction(self, instruction):
+        if len(instruction) != 32:
+            self.update_display('instruction is not 32bit long.\n')
+        self.store_main_memory(instruction)
+        self.prog_counter += 1
+        return
+    
+    #getting current instruction
+    def get_current_instruction(self, location = None):
+        if location:
+            instruction = self.retrieve_main_memory(location)
+            opcode = instruction[0:6]
+            Rs = instruction[6:11]
+            Rt = instruction[11:16]
+            Rd = instruction[16:26]
+            function = instruction[26:]
+            return opcode, Rs, Rt, Rd, function
+        else:
+            if self.prog_counter == 0:
+                self.update_display = ('Executed currant batch of instructions\n')
+            else:
+                instruction = self.retrieve_main_memory(self.prog_counter - 1)
+                opcode = instruction[0:6]
+                Rs = instruction[6:11]
+                Rt = instruction[11:16]
+                Rd = instruction[16:26]
+                function = instruction[26:]
+                return opcode, Rs, Rt, Rd, function
+            
+    #######################################################
+    # Function: add
+    # Adds numbeRs stored in registers
+    #######################################################  
+    def add(self, Rs, Rt):
+    # Load values
+        num1 = self.load_value_from_register(Rs)
+        num2 = self.load_value_from_register(Rt)
+
+    # Perform calculation
+        calculated_num = num1 + num2
+        self.update_display(f'adding {num1} and {num2}\n')
+        return calculated_num
+
+    #######################################################
+    # Function: subtract
+    # Subtracts numbeRs stored in registers
+    ####################################################### 
+    def subtract(self, Rs, Rt):
+    # Load values
+        num1 = self.load_value_from_register(Rs)
+        num2 = self.load_value_from_register(Rt)
+
+    # Perform calculation
+        calculated_num = num1 - num2
+        self.update_display(f'subtracting {num1} and {num2}\n')
+        return calculated_num
+
+    #######################################################
+    # Function: multiply
+    # Multiplies numbeRs stored in registers
+    ####################################################### 
+    def multiply(self, Rs, Rt):
+    # Load values
+        num1 = self.load_value_from_register(Rs)
+        num2 = self.load_value_from_register(Rt)
+
+    # Perform calculation
+        calculated_num = num1 * num2
+        self.update_display(f'multiplying {num1} and {num2}\n')
+        return calculated_num
+
+    #######################################################
+    # Function: divide
+    # Divides numbeRs stored in registers
+    ####################################################### 
+    def divide(self, Rs, Rt):
+        # Load values
+        num1 = self.load_value_from_register(Rs)
+        num2 = self.load_value_from_register(Rt)
+
+        calculated_num = 0
+
+        # Check for division by 0
+        if(num2 != 0):
+            calculated_num = int(num1 / num2)
+        else:
+            print(f"Division by 0 error: {num1}/{num2}.")
+        self.update_display(f'dividing {num1} and {num2}\n')
+        # Returns 0 if dividing by zero
+        return calculated_num
+    
+    #logical operation for set on less than
+    def slt(self, Rs, Rt):
+        num1 = self.load_value_from_register(Rs)
+        num2 = self.load_value_from_register(Rt)
+        self.update_display(f'Checking to see if {num1} is less than {num2}\n')
+        if num1 < num2:
+            return 1
+        else:
+            return 0
+    
+    #jump operation used to jump to a specific instruction
+    def j(self, target):
+        self.prog_counter = int(target)
+        self.update_display(f'Jumping program counter {target} in main memory')
+        return
+    
+    #jump and link method
+    def jal(self, target):
+        self.store_value_to_register(self.prog_counter + 4, 7)
+        self.prog_counter = target * 4
+        
+    #load woRd operation
+    def lw(self, Rs):
+        woRd = self.retrieve_main_memory(int(Rs, 2))
+        self.update_display(f'loading {woRd} from main memory location {int(Rs, 2)}')
+
+    #store woRd operation
+    def sw(self, Rs, woRd):
+        self.store_main_memory(woRd, int(Rs, 2))
+        self.update_display(f'storing {woRd} to main memory location {int(Rs, 2)}')
+
+    #terminates execution of current instruction set
+    def half(self):
+        sys.exit('Terminated execution completed\n')
+
+
+    def parse_and_execute_instructions(self, instructions):
+        instructions = instructions.split('\n')
+        print(instructions)
+        for n, instruction in enumerate(reversed(instructions)):
+            self.update_display(f'instruction {n}')
+            self.store_instruction(instruction)
+            self.update_display(f'is {self.retrieve_main_memory(self.prog_counter - 1)} and is sotred at location {self.prog_counter - 1}\n')
+        self.update_display(f'We have a total of {self.prog_counter} instructions.\n')
+        for instruction in range(self.prog_counter):
+            opcode, Rs, Rt, Rd, function = self.get_current_instruction()
+            print(f'Opcode: {opcode}\n  Rs: {Rs}\n  Rt: {Rt}\n  Rd: {Rd}\n fuction: {function}\n')
+            if function == '000011':
+                self.store_value_to_register(Rs)
+                self.store_value_to_register(Rt)
+            if opcode == '000001':
+                value = self.add(Rs, Rt)
+                location = int(Rd, 2)
+                self.store_main_memory(value, location)
+            if opcode == '000010':
+                value = self.subtract(Rs, Rt)
+                location = int(Rd, 2)
+                self.store_main_memory(value, location)
+            if opcode == '00011':
+                value = self.multiply(Rs, Rt)
+                location = int(Rd, 2)
+                self.store_main_memory(value, location)
+            if opcode == '00100':
+                value = self.divide(Rs, Rt)
+                location = int(Rd, 2)
+                self.store_main_memory(value, location)    
+
+my_cpu = rob_cpu('IDK')
+instructions = '00000000100010000000000000000011\n00000100001000100000001000000000\n00001000001000100000001001000000\n00001100001000100000001010000000\n00010000010000010000001011000000'
+my_cpu.parse_and_execute_instructions(instructions)
+
+                    
+# test = rob_cpu('Joseph')
+# test.store_main_memory(value_to_store=45, location_to_store=1)
+# test.store_main_memory(value_to_store=32, location_to_store=2)
+# test.store_main_memory(value_to_store=98, location_to_store=3)
+# test.store_main_memory(value_to_store=0, location_to_store=4)
+# test.store_main_memory(value_to_store=432, location_to_store=5)
+# test.store_main_memory(value_to_store=412, location_to_store=6)
+# test.store_main_memory(value_to_store=532, location_to_store=7)
+# test.store_main_memory(value_to_store=633, location_to_store=8)
+# test.store_main_memory(value_to_store=534, location_to_store=9)
+# test.store_main_memory(value_to_store=254, location_to_store=10)
+# test.store_main_memory(value_to_store=534, location_to_store=11)
+# test.store_main_memory(value_to_store=4553, location_to_store=12)
+
+
+# cpu = rob_cpu('Joseph')
+# instructions = '00000101100010000000000000000011\n00000100001000100000001000000000\nn00000100000100100000001000000000\n00001000001000100000001001000000\n00001100001000100000001010000000\n00010000010000010000001011000000/nn00010000011000010000001011000000'
+# cpu.paRse_and_execute_instructions(instructions)

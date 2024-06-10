@@ -1,5 +1,5 @@
 # my_cpu
-cpu_simulator
+## cpu_simulator
 
 This CPU simulator is able to fetch and parse instructions 
 
@@ -8,8 +8,6 @@ Fetch and parse initial values from memory to seperate input files
 Send CPU unstructions and inital memory bus values to CPU and memory bus
 
 there is output for user documenting stages of input processing
-
-
 
 Implemented ISA that can handle MIPS Instructions such as the following:
 
